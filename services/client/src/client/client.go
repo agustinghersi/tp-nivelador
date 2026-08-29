@@ -97,7 +97,7 @@ func (client *Client) readInputFile() error {
 			return err
 		}
 
-		responseBuffer, err := safe_socket.RecvAll(client.conn, ECHO_CLIENT_BUFFER_SIZE)
+		responseBuffer, err := safe_socket.RecvAll(client.conn, len(line)) // con el len es dinamica la cantidad ahora
 		if err != nil {
 			logger.Error("recv-response", logger.Fail)
 			return err
