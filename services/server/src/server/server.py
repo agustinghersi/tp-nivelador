@@ -1,6 +1,7 @@
 import socket
 import logger
 import safe_socket
+import protocol
 
 
 class Server:
@@ -14,7 +15,7 @@ class Server:
         try:
             logger.info(action, logger.LogResult.in_progress)
             while True:
-                message_size = safe_socket.recv_size(client_socket)
+                message_size = protocol.recv_size(client_socket)
                 client_message = safe_socket.recv_all(
                     client_socket, message_size
                 )

@@ -8,6 +8,7 @@ import (
 
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/logger"
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/safe_socket"
+	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/protocol"
 )
 
 const CONNECTION_ATTEMPTS_MAX = 3
@@ -92,7 +93,7 @@ func (client *Client) readInputFile() error {
 		//De momento solo me copio lo que estaba en el esquleto para mandar las lineas 1 a 1
 		//readder := csv.NewReader(file)
 
-		if err := safe_socket.SendSize(client.conn, len(line)); err != nil {
+		if err := protocol.SendSize(client.conn, len(line)); err != nil {
 			logger.Error("send-size", logger.Fail)
 			return err
 		}
