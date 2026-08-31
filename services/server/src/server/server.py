@@ -2,8 +2,6 @@ import socket
 import logger
 import safe_socket
 
-_ECHO_SERVER_MESSAGE_SIZE = 1024
-
 
 class Server:
     def __init__(self, server_host: str, server_port: int) -> None:
@@ -16,8 +14,9 @@ class Server:
         try:
             logger.info(action, logger.LogResult.in_progress)
             while True:
+                message_size = safe_socket.recv_size(client_socket)
                 client_message = safe_socket.recv_all(
-                    client_socket, _ECHO_SERVER_MESSAGE_SIZE
+                    client_socket, message_size
                 )
                 if not client_message:
                     logger.info(
@@ -29,6 +28,11 @@ class Server:
                     return
                 message_amount += 1
                 safe_socket.send_all(client_socket, client_message)
+        # Caso de conexion cerrada por ya haber enviado todos los mensajes
+        except ConnectionError:
+            logger.info(action, logger.LogResult.success, "messages-amount", message_amount)
+            client_socket.close() # Ya no van a llegar mas mensajes
+            return
         except Exception as e:
             logger.error(
                 action, logger.LogResult.fail, "messages-amount", message_amount

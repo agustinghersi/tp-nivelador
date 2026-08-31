@@ -92,6 +92,11 @@ func (client *Client) readInputFile() error {
 		//De momento solo me copio lo que estaba en el esquleto para mandar las lineas 1 a 1
 		//readder := csv.NewReader(file)
 
+		if err := safe_socket.SendSize(client.conn, len(line)); err != nil {
+			logger.Error("send-size", logger.Fail)
+			return err
+		}
+
 		if err := safe_socket.SendAll(client.conn, []byte(line)); err != nil {
 			logger.Error("send-message", logger.Fail)
 			return err
