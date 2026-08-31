@@ -1,1 +1,1 @@
-from .protocol import recv_size
+from .protocol import recv_size, create_bet

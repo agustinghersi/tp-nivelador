@@ -2,12 +2,13 @@ import socket
 import logger
 import safe_socket
 import protocol
-
+from lottery import Lottery
 
 class Server:
     def __init__(self, server_host: str, server_port: int) -> None:
         self.server_host = server_host
         self.server_port = server_port
+        self.lottery = Lottery(storage_path="bets.csv")
 
     def _handle_client(self, client_socket):
         action = "handle-client"
@@ -29,6 +30,8 @@ class Server:
                     return
                 message_amount += 1
                 safe_socket.send_all(client_socket, client_message)
+                bets = protocol.create_bet(client_message)
+                self.lottery.store_bets(bets)
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
         except ConnectionError:
             logger.info(action, logger.LogResult.success, "messages-amount", message_amount)
