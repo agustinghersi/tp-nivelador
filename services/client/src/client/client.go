@@ -85,13 +85,15 @@ func (client *Client) readInputFile() error {
 	// Aca empiezo con lectura y escritura
 	scanner := bufio.NewScanner(file)
 
+	// Mando una sola vez la agencia para que sepa con que cliente esta trabajando
+	if err := protocol.SendAgency(client.conn, client.config.AgencyId); err != nil {
+		logger.Error("send-agency", logger.Fail)
+		return err
+	}
+
 	for scanner.Scan() {
 		
 		line := scanner.Text() // Lee de a 1 linea
-
-		// Ver si despues se requiere trabajar la linea para que no quede texto
-		//De momento solo me copio lo que estaba en el esquleto para mandar las lineas 1 a 1
-		//readder := csv.NewReader(file)
 
 		if err := protocol.SendSize(client.conn, len(line)); err != nil {
 			logger.Error("send-size", logger.Fail)
@@ -106,11 +108,6 @@ func (client *Client) readInputFile() error {
 		responseBuffer, err := safe_socket.RecvAll(client.conn, len(line)) // con el len es dinamica la cantidad ahora
 		if err != nil {
 			logger.Error("recv-response", logger.Fail)
-			return err
-		}
-
-		if string(responseBuffer) != line {
-			logger.Error("check-response", logger.Fail)
 			return err
 		}
 

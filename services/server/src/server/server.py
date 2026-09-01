@@ -15,6 +15,9 @@ class Server:
         message_amount = 0
         try:
             logger.info(action, logger.LogResult.in_progress)
+
+            agency = protocol.recv_agency(client_socket)
+            logger.info(action, logger.LogResult.success, "agency", agency)
             while True:
                 message_size = protocol.recv_size(client_socket)
                 client_message = safe_socket.recv_all(
@@ -30,7 +33,7 @@ class Server:
                     return
                 message_amount += 1
                 safe_socket.send_all(client_socket, client_message)
-                bets = protocol.create_bet(client_message)
+                bets = protocol.create_bet(client_message, agency)
                 self.lottery.store_bets(bets)
 
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
