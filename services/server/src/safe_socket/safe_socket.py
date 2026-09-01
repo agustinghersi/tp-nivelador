@@ -1,23 +1,21 @@
 import socket
 
-# TODO: Complete with a short-read/short-write tolerant implementation
-
+# recibo la cantidad de bytes idicados en size por el socket
 def recv_all(socket: socket.socket, size):
-    return socket.recv(size)
+    bytesReceived = bytearray()
+    while len(bytesReceived) < size:
+        bytesToRecv = socket.recv(size - len(bytesReceived))
+        if not bytesToRecv:
+            raise ConnectionError("No se recibio ningun byte")
+        bytesReceived.extend(bytesToRecv)
+    return bytesReceived
 
-
+# Envio los bytes
 def send_all(socket: socket.socket, bytes):
-    """ BytesSent = 0
+    BytesSent = 0
     while BytesSent < len(bytes):
         bytesSent = socket.send(bytes[BytesSent:])
         if bytesSent == 0:
             raise Exception("No se pudo enviar ningun byte")
         BytesSent += bytesSent
-    return None """
-    return socket.send(bytes)
-
-def recv_agency(socket: socket.socket):
-    agency = socket.recv(1) # Por protocolo
-    if not agency:
-        raise ConnectionError("No se recibio ningun byte")
-    return agency
+    return None

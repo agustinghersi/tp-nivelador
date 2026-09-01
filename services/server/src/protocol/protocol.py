@@ -11,25 +11,17 @@ def recv_agency(socket: socket.socket):
 # Luego recibo el resto del mensaje
 def recv_all(socket: socket.socket):
     # primero recupero la longitud del mensaje
-    sizeRecv = 0
-    sizeMessage = bytearray()
-    while sizeRecv < 4:
-        BytesToRecv = safe_socket.recv_all(socket, 4 - sizeRecv)
-        if not BytesToRecv:
-            raise ConnectionError("No se recibio ningun byte") # Ya se recibio la ultima linea
-        sizeRecv += len(BytesToRecv)
-        sizeMessage.extend(BytesToRecv)
-
-    message = bytearray()
+    BytesToRecv = safe_socket.recv_all(socket, 4)
+    if not BytesToRecv:
+        raise ConnectionError("No se recibio ningun byte") # Ya se recibio la ultima linea
 
     # Ahora recibo la apuesta sabiendo longitud
-    while int(sizeMessage.decode('ascii')) > len(message):
-        bytesRecv = safe_socket.recv_all(socket, int(BytesToRecv.decode('ascii')) - len(message))
-        if not bytesRecv:
-            raise Exception("No se recibio ningun byte") # Aca no deberia llegar
-        message.extend(bytesRecv)
+    sizeMessage = int(BytesToRecv.decode('ascii'))
+    bytesRecv = safe_socket.recv_all(socket, sizeMessage)
+    if not bytesRecv:
+        raise Exception("No se recibio ningun byte") # Aca no deberia llegar
     
-    return bytes(message)
+    return bytesRecv
 
 # Deserializo el mensaje y lo convierto en un Bet
 def create_bet(message: str, agency: str):
@@ -49,8 +41,10 @@ def create_bet(message: str, agency: str):
     bets.append(bet)
     return bets
 
+# Preparo el formato para mandar ganadores al cliente
 def send_winners(socket: socket.socket, winners: list[Bet]):
     for winner in winners:
+        # Formato esperado para guardar en el OUTPUT_FILE
         message = ",".join([
             winner.first_name, 
             winner.last_name, 
@@ -61,11 +55,8 @@ def send_winners(socket: socket.socket, winners: list[Bet]):
         message = message.encode("utf-8")
         messageSize = len(message)
         firstMessage = f"{messageSize:04d}".encode("ascii") # 4 bytes que indican longitud
+        
+        # Armo el mensaje completo, con longitud y apuesta, y lo envio
         message = firstMessage + message
+        bytesSent = safe_socket.send_all(socket, message)
 
-        BytesSent = 0
-        while BytesSent < len(message):
-            bytesSent = safe_socket.send_all(socket, message[BytesSent:])
-            if bytesSent == 0:
-                raise Exception("No se pudo enviar ningun byte")
-            BytesSent += bytesSent
