@@ -19,9 +19,8 @@ class Server:
             agency = protocol.recv_agency(client_socket)
             logger.info(action, logger.LogResult.success, "agency", agency)
             while True:
-                message_size = protocol.recv_size(client_socket)
-                client_message = safe_socket.recv_all(
-                    client_socket, message_size
+                client_message = protocol.recv_all(
+                    client_socket
                 )
                 if not client_message:
                     logger.info(
@@ -40,8 +39,10 @@ class Server:
         except ConnectionError:
             # YA con todos los mensages recibidos, se ve quien gano
             loaded_bets = self.lottery.load_bets()
-            winners = self.get_winners(loaded_bets)
+            winners = self.get_winners(loaded_bets, agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
+
+            # safe_socket.send_all(client_socket, winners)
 
             logger.info(action, logger.LogResult.success, "messages-amount", message_amount)
             client_socket.close() # Ya no van a llegar mas mensajes
@@ -52,11 +53,12 @@ class Server:
             )
             raise e
 
-    def get_winners(self, bets: list[Bet]) -> list[Bet]:
+    def get_winners(self, bets: list[Bet], agency: str) -> list[Bet]:
         winners = []
         for bet in bets:
             if self.lottery.has_won(bet):
-                winners.append(bet)
+                if bet.agency_id == int(agency):
+                    winners.append(bet)
         return winners
 
     def run(self):

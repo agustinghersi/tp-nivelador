@@ -1,16 +1,28 @@
 import socket
-from safe_socket import recv_all
+import safe_socket
 from lottery.bet import Bet
 
 # Aca defino la primer comunicación del protocolo
 # Se recibe una sola vez la agencia del cliente con el que se comunica
 def recv_agency(socket: socket.socket):
-    return recv_all(socket, 1).decode('ascii')
+    return safe_socket.recv_all(socket, 1).decode('ascii')
 
 # Recibo el largo de la linea en 4 bytes para que el server la lea dinamicamente
-def recv_size(socket: socket.socket):
-    BytesToRecv = recv_all(socket, 4)
-    return int(BytesToRecv.decode('ascii')) # Paso de string a int
+def recv_all(socket: socket.socket):
+    # primero recupero la longitud del mensaje
+    BytesToRecv = safe_socket.recv_all(socket, 4)
+    if not BytesToRecv:
+        raise ConnectionError("No se recibio ningun byte") # Ya se recibio la ultima linea
+    message = bytearray()
+
+    # Ahora recibo la apuesta sabiendo longitud
+    while int(BytesToRecv.decode('ascii')) > len(message):
+        bytesRecv = safe_socket.recv_all(socket, int(BytesToRecv.decode('ascii')) - len(message))
+        if not bytesRecv:
+            raise Exception("No se recibio ningun byte") # Aca no deberia llegar
+        message.extend(bytesRecv)
+    
+    return bytes(message)
 
 # Deserializo el mensaje y lo convierto en un Bet
 def create_bet(message: str, agency: str):

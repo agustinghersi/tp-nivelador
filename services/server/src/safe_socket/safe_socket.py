@@ -3,14 +3,7 @@ import socket
 # TODO: Complete with a short-read/short-write tolerant implementation
 
 def recv_all(socket: socket.socket, size):
-    message = bytearray()
-
-    while len(message) < size:
-        bytesRecv = socket.recv(size - len(message))
-        if not bytesRecv:
-            raise ConnectionError("No se recibio ningun byte")
-        message.extend(bytesRecv)
-    return bytes(message)
+    return socket.recv(size)
 
 
 def send_all(socket: socket.socket, bytes):
@@ -21,3 +14,9 @@ def send_all(socket: socket.socket, bytes):
             raise Exception("No se pudo enviar ningun byte")
         BytesSent += bytesSent
     return None
+
+def recv_agency(socket: socket.socket):
+    agency = socket.recv(1) # Por protocolo
+    if not agency:
+        raise ConnectionError("No se recibio ningun byte")
+    return agency
