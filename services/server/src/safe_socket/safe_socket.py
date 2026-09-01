@@ -7,13 +7,14 @@ def recv_all(socket: socket.socket, size):
 
 
 def send_all(socket: socket.socket, bytes):
-    BytesSent = 0
+    """ BytesSent = 0
     while BytesSent < len(bytes):
         bytesSent = socket.send(bytes[BytesSent:])
         if bytesSent == 0:
             raise Exception("No se pudo enviar ningun byte")
         BytesSent += bytesSent
-    return None
+    return None """
+    return socket.send(bytes)
 
 def recv_agency(socket: socket.socket):
     agency = socket.recv(1) # Por protocolo

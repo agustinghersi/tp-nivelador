@@ -29,11 +29,18 @@ class Server:
                         "messages-amount",
                         message_amount,
                     )
-                    return
+                    break # No va a llegar nada mas
                 message_amount += 1
-                safe_socket.send_all(client_socket, client_message)
+
                 bets = protocol.create_bet(client_message, agency)
                 self.lottery.store_bets(bets)
+            
+            loaded_bets = self.lottery.load_bets()
+            winners = self.get_winners(loaded_bets, agency)
+            logger.info(action, logger.LogResult.success, "winners", winners)
+            # Envio ganadores
+            protocol.send_winners(client_socket, winners)
+
 
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
         except ConnectionError:
@@ -42,7 +49,8 @@ class Server:
             winners = self.get_winners(loaded_bets, agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
 
-            # safe_socket.send_all(client_socket, winners)
+            # Envio ganadores
+            protocol.send_winners(client_socket, winners)
 
             logger.info(action, logger.LogResult.success, "messages-amount", message_amount)
             client_socket.close() # Ya no van a llegar mas mensajes

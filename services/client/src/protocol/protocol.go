@@ -3,6 +3,7 @@ package protocol
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/safe_socket"
 )
@@ -19,4 +20,33 @@ func SendSize(socket io.Writer, size int) error {
 
 	// Envio el tamaño de la linea
 	return safe_socket.SendAll(socket, BytesToSend)
+}
+
+func RecvWinners(socket io.Reader) ([]byte, error) {
+	message := []byte{}
+	// Repito hasta que no llegue ningun ganador mas
+	for {
+		// primero recupero la longitud del mensaje
+		lineSize, err := safe_socket.RecvAll(socket, 4)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		// Ahora recibo el ganador sabiendo longitud. El short read se hace en socket
+		size, err := strconv.Atoi(string(lineSize))
+		if err != nil {
+			return nil, err
+		}
+		line, err := safe_socket.RecvAll(socket, size)
+		if err != nil {
+			return nil, err
+		}
+		message = append(message, line...)
+		message = append(message, '\n')
+	}
+
+	return message, nil
 }

@@ -8,15 +8,22 @@ def recv_agency(socket: socket.socket):
     return safe_socket.recv_all(socket, 1).decode('ascii')
 
 # Recibo el largo de la linea en 4 bytes para que el server la lea dinamicamente
+# Luego recibo el resto del mensaje
 def recv_all(socket: socket.socket):
     # primero recupero la longitud del mensaje
-    BytesToRecv = safe_socket.recv_all(socket, 4)
-    if not BytesToRecv:
-        raise ConnectionError("No se recibio ningun byte") # Ya se recibio la ultima linea
+    sizeRecv = 0
+    sizeMessage = bytearray()
+    while sizeRecv < 4:
+        BytesToRecv = safe_socket.recv_all(socket, 4 - sizeRecv)
+        if not BytesToRecv:
+            raise ConnectionError("No se recibio ningun byte") # Ya se recibio la ultima linea
+        sizeRecv += len(BytesToRecv)
+        sizeMessage.extend(BytesToRecv)
+
     message = bytearray()
 
     # Ahora recibo la apuesta sabiendo longitud
-    while int(BytesToRecv.decode('ascii')) > len(message):
+    while int(sizeMessage.decode('ascii')) > len(message):
         bytesRecv = safe_socket.recv_all(socket, int(BytesToRecv.decode('ascii')) - len(message))
         if not bytesRecv:
             raise Exception("No se recibio ningun byte") # Aca no deberia llegar
@@ -27,7 +34,7 @@ def recv_all(socket: socket.socket):
 # Deserializo el mensaje y lo convierto en un Bet
 def create_bet(message: str, agency: str):
     bets = [] # Momentaneamente solo hay una hasta ej 6
-    message = message.decode("utf-8") # Esto deberia ser util cuando prtocolo maneje binario
+    message = message.decode("utf-8")
 
     array_message = message.split(",")
     bet = Bet(
@@ -41,3 +48,24 @@ def create_bet(message: str, agency: str):
     
     bets.append(bet)
     return bets
+
+def send_winners(socket: socket.socket, winners: list[Bet]):
+    for winner in winners:
+        message = ",".join([
+            winner.first_name, 
+            winner.last_name, 
+            str(winner.document), 
+            winner.birthdate, 
+            str(winner.number)
+        ])
+        message = message.encode("utf-8")
+        messageSize = len(message)
+        firstMessage = f"{messageSize:04d}".encode("ascii") # 4 bytes que indican longitud
+        message = firstMessage + message
+
+        BytesSent = 0
+        while BytesSent < len(message):
+            bytesSent = safe_socket.send_all(socket, message[BytesSent:])
+            if bytesSent == 0:
+                raise Exception("No se pudo enviar ningun byte")
+            BytesSent += bytesSent

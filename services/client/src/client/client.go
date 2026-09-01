@@ -73,15 +73,6 @@ func (client *Client) readInputFile() error {
 
 	defer file.Close() // El archivo se cierra al final de a funcion
 
-	// Creo o trunco el output
-	outPutFile, err := os.Create(client.config.OutputFile)
-	if err != nil {
-		logger.Error("open-output-file", logger.Fail, "output-file", client.config.OutputFile)
-		return err
-	}
-
-	defer outPutFile.Close()
-
 	// Aca empiezo con lectura y escritura
 	scanner := bufio.NewScanner(file)
 
@@ -105,19 +96,38 @@ func (client *Client) readInputFile() error {
 			return err
 		}
 
-		responseBuffer, err := safe_socket.RecvAll(client.conn, len(line)) // con el len es dinamica la cantidad ahora
-		if err != nil {
-			logger.Error("recv-response", logger.Fail)
-			return err
-		}
+	}
 
-		//Aca escribo el output
-		_, err = outPutFile.WriteString(string(responseBuffer) + "\n") //Bufio saca el \n con el Text
-		if err != nil {
-			logger.Error("write-output-file", logger.Fail, "output-file", client.config.OutputFile)
-			return err
-		}
+	// Cierro la escritura del socket luego de mandar todos los mensajes
+	if tcpConn, ok := client.conn.(*net.TCPConn); ok {
+		tcpConn.CloseWrite()
+	}
 
+	return nil
+}
+
+func (client *Client) recvWinners() error {
+	// Creo o trunco el output
+	outPutFile, err := os.Create(client.config.OutputFile)
+	if err != nil {
+		logger.Error("open-output-file", logger.Fail, "output-file", client.config.OutputFile)
+		return err
+	}
+
+	defer outPutFile.Close()
+
+	// Recibo todos los ganadores
+	winners, err := protocol.RecvWinners(client.conn)
+	if err != nil {
+		logger.Error("recv-response", logger.Fail)
+		return err
+	}
+
+	//Aca escribo el output
+	_, err = outPutFile.WriteString(string(winners))
+	if err != nil {
+		logger.Error("write-output-file", logger.Fail, "output-file", client.config.OutputFile)
+		return err
 	}
 
 	return nil
@@ -134,6 +144,12 @@ func (client *Client) Run() error {
 		return err
 	}
 	logger.Info(mainAction, logger.Success, "agency-id", client.config.AgencyId)
+	
+	// Luego de mandar todo recibo los ganadores
+	if err := client.recvWinners(); err != nil {
+		logger.Error("recv-winners", logger.Fail)
+		return err
+	}
 
 	return nil
 }
