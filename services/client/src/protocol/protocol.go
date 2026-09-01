@@ -15,11 +15,22 @@ func SendAgency(socket io.Writer, agency string) error {
 
 // Envio el largo de la linea en 4 bytes para que el server sepa leerla dinamicamente
 // Sigue el flujo con lo ya hecho en SendAll
-func SendSize(socket io.Writer, size int) error {
+func SendAll(socket io.Writer, bytes []byte) error {
+	size := len(bytes)
 	BytesToSend := []byte(fmt.Sprintf("%04d", size)) // Tamaño de la linea en 4 bytes
 
 	// Envio el tamaño de la linea
-	return safe_socket.SendAll(socket, BytesToSend)
+	if err := safe_socket.SendAll(socket, BytesToSend); err != nil {
+		return err
+	}
+
+	//Ahora puedo enviar la linea
+	if err := safe_socket.SendAll(socket, bytes); err != nil {
+		return err
+	}
+
+	return nil
+
 }
 
 func RecvWinners(socket io.Reader) ([]byte, error) {

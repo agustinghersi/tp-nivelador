@@ -7,7 +7,6 @@ import (
 	"bufio"
 
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/logger"
-	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/safe_socket"
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/protocol"
 )
 
@@ -86,12 +85,7 @@ func (client *Client) readInputFile() error {
 		
 		line := scanner.Text() // Lee de a 1 linea
 
-		if err := protocol.SendSize(client.conn, len(line)); err != nil {
-			logger.Error("send-size", logger.Fail)
-			return err
-		}
-
-		if err := safe_socket.SendAll(client.conn, []byte(line)); err != nil {
+		if err := protocol.SendAll(client.conn, []byte(line)); err != nil {
 			logger.Error("send-message", logger.Fail)
 			return err
 		}

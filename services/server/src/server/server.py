@@ -1,6 +1,5 @@
 import socket
 import logger
-import safe_socket
 import protocol
 from lottery import Lottery, Bet
 
