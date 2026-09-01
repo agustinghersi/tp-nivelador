@@ -2,7 +2,7 @@ import socket
 import logger
 import safe_socket
 import protocol
-from lottery import Lottery
+from lottery import Lottery, Bet
 
 class Server:
     def __init__(self, server_host: str, server_port: int) -> None:
@@ -32,8 +32,14 @@ class Server:
                 safe_socket.send_all(client_socket, client_message)
                 bets = protocol.create_bet(client_message)
                 self.lottery.store_bets(bets)
+
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
         except ConnectionError:
+            # YA con todos los mensages recibidos, se ve quien gano
+            loaded_bets = self.lottery.load_bets()
+            winners = self.get_winners(loaded_bets)
+            logger.info(action, logger.LogResult.success, "winners", winners)
+
             logger.info(action, logger.LogResult.success, "messages-amount", message_amount)
             client_socket.close() # Ya no van a llegar mas mensajes
             return
@@ -42,6 +48,13 @@ class Server:
                 action, logger.LogResult.fail, "messages-amount", message_amount
             )
             raise e
+
+    def get_winners(self, bets: list[Bet]) -> list[Bet]:
+        winners = []
+        for bet in bets:
+            if self.lottery.has_won(bet):
+                winners.append(bet)
+        return winners
 
     def run(self):
         action = "accept-connection"
