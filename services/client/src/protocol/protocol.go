@@ -13,19 +13,26 @@ func SendAgency(socket io.Writer, agency string) error {
 	return safe_socket.SendAll(socket, []byte(agency))
 }
 
-// Envio el largo de la linea en 4 bytes para que el server sepa leerla dinamicamente
-// Sigue el flujo con lo ya hecho en SendAll
-func SendAll(socket io.Writer, bytes []byte) error {
-	size := len(bytes)
-	BytesToSend := []byte(fmt.Sprintf("%04d", size)) // Tamaño de la linea en 4 bytes
-
-	// Envio el tamaño de la linea
-	if err := safe_socket.SendAll(socket, BytesToSend); err != nil {
-		return err
+// Envio un chunk de lineas al servidor
+// Manda 4 bytes indicando tamaño de chunk
+//Luego, por cada linea, manda 4 bytes de longitud de mensaje y el propio mensaje
+func SendAll(socket io.Writer, chunk []string) error {
+	elements := len(chunk)
+	BytesToSend := []byte{}
+	// Agrego el numero de elementos del chunk. Por protocolo son 4 bytes
+	BytesToSend = append(BytesToSend, fmt.Sprintf("%04d", elements)...) 
+	// El for prepara las N lineas del chunk a enviar
+	for i := range elements {
+		message := []byte(chunk[i])
+		size := len(message)
+		BytesToSendMessage := []byte(fmt.Sprintf("%04d", size)) // Tamaño de la linea en 4 bytes
+		// Agrego los 2 campos de protocolo por linea leida
+		BytesToSend = append(BytesToSend, BytesToSendMessage...)
+		BytesToSend = append(BytesToSend, message...)
 	}
 
-	//Ahora puedo enviar la linea
-	if err := safe_socket.SendAll(socket, bytes); err != nil {
+	// Envio todo el chunk de una
+	if err := safe_socket.SendAll(socket, BytesToSend); err != nil {
 		return err
 	}
 

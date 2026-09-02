@@ -12,16 +12,17 @@ class Server:
     def _handle_client(self, client_socket):
         action = "handle-client"
         message_amount = 0
+        chunk_amount = 0 # Para contar la cantidad de chunks recibidos
         try:
             logger.info(action, logger.LogResult.in_progress)
 
             agency = protocol.recv_agency(client_socket)
             logger.info(action, logger.LogResult.success, "agency", agency)
             while True:
-                client_message = protocol.recv_all(
+                client_messages = protocol.recv_all(
                     client_socket
                 )
-                if not client_message:
+                if len(client_messages) == 0:
                     logger.info(
                         action,
                         logger.LogResult.success,
@@ -29,9 +30,10 @@ class Server:
                         message_amount,
                     )
                     break # No va a llegar nada mas
-                message_amount += 1
+                message_amount += len(client_messages)
+                chunk_amount += 1
 
-                bets = protocol.create_bet(client_message, agency)
+                bets = protocol.create_bet(client_messages, agency)
                 self.lottery.store_bets(bets)
             
             loaded_bets = self.lottery.load_bets()
@@ -52,6 +54,7 @@ class Server:
             protocol.send_winners(client_socket, winners)
 
             logger.info(action, logger.LogResult.success, "messages-amount", message_amount)
+            logger.info(action, logger.LogResult.success, "chunks-amount", chunk_amount)
             client_socket.close() # Ya no van a llegar mas mensajes
             return
         except Exception as e:

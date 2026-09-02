@@ -20,6 +20,7 @@ services:
       - server
     environment:
       - AGENCY_ID=0
+      - BATCH_SIZE=16
       - SERVER_HOST=server
       - SERVER_PORT=5678
       - INPUT_FILE=./input/input-0.csv
@@ -37,6 +38,7 @@ services:
       - server
     environment:
       - AGENCY_ID=1
+      - BATCH_SIZE=20
       - SERVER_HOST=server
       - SERVER_PORT=5678
       - INPUT_FILE=./input/input-1.csv
@@ -54,6 +56,7 @@ services:
       - server
     environment:
       - AGENCY_ID=2
+      - BATCH_SIZE=24
       - SERVER_HOST=server
       - SERVER_PORT=5678
       - INPUT_FILE=./input/input-2.csv
@@ -71,6 +74,7 @@ services:
       - server
     environment:
       - AGENCY_ID=3
+      - BATCH_SIZE=28
       - SERVER_HOST=server
       - SERVER_PORT=5678
       - INPUT_FILE=./input/input-3.csv
@@ -88,6 +92,7 @@ services:
       - server
     environment:
       - AGENCY_ID=4
+      - BATCH_SIZE=32
       - SERVER_HOST=server
       - SERVER_PORT=5678
       - INPUT_FILE=./input/input-4.csv

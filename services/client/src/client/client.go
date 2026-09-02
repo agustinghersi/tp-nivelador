@@ -23,6 +23,7 @@ type ClientConfig struct {
 	AgencyId   string
 	InputFile  string
 	OutputFile string
+	BatchSize  int
 }
 
 type Client struct {
@@ -81,11 +82,22 @@ func (client *Client) readInputFile() error {
 		return err
 	}
 
-	for scanner.Scan() {
-		
-		line := scanner.Text() // Lee de a 1 linea
+	for {
+		chunk := []string{}
+		// El for lee la cantidad de lineas definidas en el chunk
+		for i := 0; i < client.config.BatchSize; i++ {
+			if !scanner.Scan() {
+				break // Aca no hay mas lineas
+			}
+			line := scanner.Text() // Lee de a 1 linea
+			chunk = append(chunk, line)
+		}
 
-		if err := protocol.SendAll(client.conn, []byte(line)); err != nil {
+		if len(chunk) == 0 {
+			break // No hay nada que mandarle al server
+		}
+
+		if err := protocol.SendAll(client.conn, chunk); err != nil {
 			logger.Error("send-message", logger.Fail)
 			return err
 		}

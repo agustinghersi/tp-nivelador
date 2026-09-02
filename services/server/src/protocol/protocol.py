@@ -7,38 +7,43 @@ from lottery.bet import Bet
 def recv_agency(socket: socket.socket):
     return safe_socket.recv_all(socket, 1).decode('ascii')
 
-# Recibo el largo de la linea en 4 bytes para que el server la lea dinamicamente
-# Luego recibo el resto del mensaje
+# Recibo en 4 bytes la cantidad de lineas en el chunk
+# Luego recibo el largo de la linea en 4 bytes y luego recibo el mensaje
+# Esto ultimo se repite len(chunk) veces
 def recv_all(socket: socket.socket):
-    # primero recupero la longitud del mensaje
-    BytesToRecv = safe_socket.recv_all(socket, 4)
-    if not BytesToRecv:
-        raise ConnectionError("No se recibio ningun byte") # Ya se recibio la ultima linea
+    # Primero determino la cantidad de mensaje s a leer
+    ChunkSize = int(safe_socket.recv_all(socket, 4).decode('ascii'))
+    messages = []
+    # Ahora armo el ciclo de recuperar longituf y mensaje
+    for i in range(ChunkSize):
+        BytesToRecv = safe_socket.recv_all(socket, 4)
+        if not BytesToRecv:
+            raise ConnectionError("No se recibio ningun byte") # Ya se recibio la ultima linea
 
-    # Ahora recibo la apuesta sabiendo longitud
-    sizeMessage = int(BytesToRecv.decode('ascii'))
-    bytesRecv = safe_socket.recv_all(socket, sizeMessage)
-    if not bytesRecv:
-        raise Exception("No se recibio ningun byte") # Aca no deberia llegar
-    
-    return bytesRecv
+        # Ahora recibo la apuesta sabiendo longitud
+        sizeMessage = int(BytesToRecv.decode('ascii'))
+        bytesRecv = safe_socket.recv_all(socket, sizeMessage)
+        if not bytesRecv:
+            raise Exception("No se recibio ningun byte") # Aca no deberia llegar
+        messages.append(bytesRecv.decode('utf-8'))
 
-# Deserializo el mensaje y lo convierto en un Bet
-def create_bet(message: str, agency: str):
-    bets = [] # Momentaneamente solo hay una hasta ej 6
-    message = message.decode("utf-8")
+    return messages
 
-    array_message = message.split(",")
-    bet = Bet(
-        agency_id = agency,
-        first_name = array_message[0],
-        last_name = array_message[1],
-        document = int(array_message[2]),
-        birthdate = array_message[3],
-        number = int(array_message[4]),
-    )
-    
-    bets.append(bet)
+# Convierto Los mensajes del chunk recibido en un Array de Bets
+def create_bet(messages: list[str], agency: str):
+    bets = []
+    for message in messages:
+        array_message = message.split(",")
+        bet = Bet(
+            agency_id = agency,
+            first_name = array_message[0],
+            last_name = array_message[1],
+            document = int(array_message[2]),
+            birthdate = array_message[3],
+            number = int(array_message[4]),
+        )
+        
+        bets.append(bet)
     return bets
 
 # Preparo el formato para mandar ganadores al cliente
