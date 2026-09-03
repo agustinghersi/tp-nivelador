@@ -15,4 +15,10 @@ Se agrego una "capa" superior al protocolo. Simplemente se modificaron las funci
 El cliente enviara primero 4 bytes con la cantidad de elementos del chunk (ej: N. definido en el BATCH_SIZE), entonces se realiza un ciclo donde se leeran N lineas, y se generara un unico mensaje con los 4 bytes de tamaño del chunk y posteriormente linea a linea como se hacia antes. Esto hace que en vez de enviarse 2N + 1 mensajes se envie uno solo mucho mas grande, y aun asi el server pueda trabajar la información.
 El server lee esos primeros 4 bytes para saber cuantas apuestas le llegan, y luego en un ciclo lee las N lineas como se venia haciendo hasta el ejercicio anterior. Esto permite crear N bets por mensaje en el servidor.
 
+Ej: 7
+
+Se agrego una clase Monitor que se encarga de comunicarse con Loteria, de forma de poder tener un unico monitor para los N clientes y brindar una API para el uso de las funciones de Loteria protegiendo secciones criticas con un lock.
+Por cada cliente levanto un hilo que conoce al unico Monitor, y es este monitor quien se encarga de gestionar que solo un cliente acceda en un determinado momento al recurso protegido, e internamente valida que el minimo de agencias hayan cargado todas las apuestas antes de devolver los ganadores.
+Esto ultimo lo hago aplicando una conndition sobre el lock, despertando a los hilos dormidos cuando se cumpla (minima cantidad de agencias definida en el compose).
+
 Falta manejar los errores correctamente, cerrar FD, y ver si es necesario pasar el protocolo a binario.
