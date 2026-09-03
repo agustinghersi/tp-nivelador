@@ -38,6 +38,8 @@ class Server:
                 bets = protocol.create_bet(client_messages, agency)
                 monitor.store_bet(bets) # Adentro del monitor veo temas de concurrencia
             
+            # Sacar el codigo repetido con el ConectionError
+            monitor.register_agency()
             winners = monitor.get_winners(agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
             # Envio ganadores
@@ -47,6 +49,7 @@ class Server:
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
         except ConnectionError:
             # YA con todos los mensages recibidos, se ve quien gano
+            monitor.register_agency()
             winners = monitor.get_winners(agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
 
@@ -77,4 +80,8 @@ class Server:
                     raise e
                 logger.info(action, logger.LogResult.success)
 
-                self._handle_client(client_socket, self.monitor)
+                thread = threading.Thread(target=self._handle_client, args=(client_socket, self.monitor))
+                thread.start()
+                logger.info("thread running", logger.LogResult.success, "thread-started")
+            # Queda colgado el join hasta llegar al ej 8 y poder salir del while
+            thread.join()
