@@ -2,7 +2,6 @@ import socket
 import logger
 import protocol
 from monitor import Monitor
-from lottery import Lottery, Bet
 
 import threading
 
@@ -10,7 +9,6 @@ class Server:
     def __init__(self, server_host: str, server_port: int) -> None:
         self.server_host = server_host
         self.server_port = server_port
-        self.lottery = Lottery(storage_path="bets.csv")
         self.monitor = Monitor()
 
     def _handle_client(self, client_socket, monitor: monitor):
@@ -41,7 +39,7 @@ class Server:
                 monitor.store_bet(bets) # Adentro del monitor veo temas de concurrencia
             
             loaded_bets = monitor.load_bets()
-            winners = self.get_winners(loaded_bets, agency)
+            winners = monitor.get_winners(loaded_bets, agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
             # Envio ganadores
             protocol.send_winners(client_socket, winners)
@@ -51,7 +49,7 @@ class Server:
         except ConnectionError:
             # YA con todos los mensages recibidos, se ve quien gano
             loaded_bets = monitor.load_bets()
-            winners = self.get_winners(loaded_bets, agency)
+            winners = monitor.get_winners(loaded_bets, agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
 
             # Envio ganadores
@@ -66,14 +64,6 @@ class Server:
                 action, logger.LogResult.fail, "messages-amount", message_amount
             )
             raise e
-
-    def get_winners(self, bets: list[Bet], agency: str) -> list[Bet]:
-        winners = []
-        for bet in bets:
-            if self.lottery.has_won(bet):
-                if bet.agency_id == int(agency):
-                    winners.append(bet)
-        return winners
 
     def run(self):
         action = "accept-connection"
