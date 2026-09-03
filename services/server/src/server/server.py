@@ -38,8 +38,7 @@ class Server:
                 bets = protocol.create_bet(client_messages, agency)
                 monitor.store_bet(bets) # Adentro del monitor veo temas de concurrencia
             
-            loaded_bets = monitor.load_bets()
-            winners = monitor.get_winners(loaded_bets, agency)
+            winners = monitor.get_winners(agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
             # Envio ganadores
             protocol.send_winners(client_socket, winners)
@@ -48,8 +47,7 @@ class Server:
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
         except ConnectionError:
             # YA con todos los mensages recibidos, se ve quien gano
-            loaded_bets = monitor.load_bets()
-            winners = monitor.get_winners(loaded_bets, agency)
+            winners = monitor.get_winners(agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
 
             # Envio ganadores
@@ -70,7 +68,6 @@ class Server:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             server_socket.bind((self.server_host, self.server_port))
             server_socket.listen()
-            monitor = Monitor()
             while True:
                 try:
                     logger.info(action, logger.LogResult.in_progress)
@@ -80,4 +77,4 @@ class Server:
                     raise e
                 logger.info(action, logger.LogResult.success)
 
-                self._handle_client(client_socket, monitor)
+                self._handle_client(client_socket, self.monitor)
