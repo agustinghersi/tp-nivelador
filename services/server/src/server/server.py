@@ -1,15 +1,19 @@
 import socket
 import logger
 import protocol
+from monitor import Monitor
 from lottery import Lottery, Bet
+
+import threading
 
 class Server:
     def __init__(self, server_host: str, server_port: int) -> None:
         self.server_host = server_host
         self.server_port = server_port
         self.lottery = Lottery(storage_path="bets.csv")
+        self.monitor = Monitor()
 
-    def _handle_client(self, client_socket):
+    def _handle_client(self, client_socket, monitor: monitor):
         action = "handle-client"
         message_amount = 0
         chunk_amount = 0 # Para contar la cantidad de chunks recibidos
@@ -34,9 +38,9 @@ class Server:
                 chunk_amount += 1
 
                 bets = protocol.create_bet(client_messages, agency)
-                self.lottery.store_bets(bets)
+                monitor.store_bet(bets) # Adentro del monitor veo temas de concurrencia
             
-            loaded_bets = self.lottery.load_bets()
+            loaded_bets = monitor.load_bets()
             winners = self.get_winners(loaded_bets, agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
             # Envio ganadores
@@ -46,7 +50,7 @@ class Server:
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
         except ConnectionError:
             # YA con todos los mensages recibidos, se ve quien gano
-            loaded_bets = self.lottery.load_bets()
+            loaded_bets = monitor.load_bets()
             winners = self.get_winners(loaded_bets, agency)
             logger.info(action, logger.LogResult.success, "winners", winners)
 
@@ -76,6 +80,7 @@ class Server:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             server_socket.bind((self.server_host, self.server_port))
             server_socket.listen()
+            monitor = Monitor()
             while True:
                 try:
                     logger.info(action, logger.LogResult.in_progress)
@@ -85,4 +90,4 @@ class Server:
                     raise e
                 logger.info(action, logger.LogResult.success)
 
-                self._handle_client(client_socket)
+                self._handle_client(client_socket, monitor)
