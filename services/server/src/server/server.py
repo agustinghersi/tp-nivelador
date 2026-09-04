@@ -4,12 +4,16 @@ import protocol
 from monitor import Monitor
 
 import threading
+import signal
 
 class Server:
     def __init__(self, server_host: str, server_port: int) -> None:
         self.server_host = server_host
         self.server_port = server_port
         self.monitor = Monitor()
+        # Controla si llega la sigterm para terminar el hilo
+        self.status = True # Espero encontrar un mejor nombre antes de la entrega final
+        self.server_socket = None # Hasta crearlo en run()
 
     def _handle_client(self, client_socket, monitor: monitor):
         action = "handle-client"
@@ -44,6 +48,7 @@ class Server:
             logger.info(action, logger.LogResult.success, "winners", winners)
             # Envio ganadores
             protocol.send_winners(client_socket, winners)
+            client_socket.close()
 
 
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
@@ -66,12 +71,25 @@ class Server:
             )
             raise e
 
+    # Metodo que cierra el socket. Se hace aca porque el server se queda en el accept() y no termina el ciclo
+    # Tambien hago el cambio de status para romper el while y liberar recursos
+    def handle_signal(self, signum, frame):
+        logger.info("SIGTERM-received", logger.LogResult.success, "signal", signum)
+        self.server_socket.close()
+        self.status = False
+
     def run(self):
         action = "accept-connection"
+        threads = []
+
+        # Esto permite cambiar el status del server y luego liberar recursos saliendo del ultimo while
+        signal.signal(signal.SIGTERM, self.handle_signal)
+
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             server_socket.bind((self.server_host, self.server_port))
             server_socket.listen()
-            while True:
+            self.server_socket = server_socket # El porque en handle_signal
+            while self.status: # Sale solo cuando se recibe la SIGTERM
                 try:
                     logger.info(action, logger.LogResult.in_progress)
                     client_socket, _ = server_socket.accept()
@@ -81,7 +99,9 @@ class Server:
                 logger.info(action, logger.LogResult.success)
 
                 thread = threading.Thread(target=self._handle_client, args=(client_socket, self.monitor))
+                threads.append(thread)
                 thread.start()
                 logger.info("thread running", logger.LogResult.success, "thread-started")
-            # Queda colgado el join hasta llegar al ej 8 y poder salir del while
+        # YA habiendo salido del while por el SIGTERM, libero recursos
+        for thread in threads:
             thread.join()
