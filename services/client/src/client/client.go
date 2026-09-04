@@ -5,6 +5,8 @@ import (
 	"time"
 	"os"
 	"bufio"
+	"os/signal"
+	"syscall"
 
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/logger"
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/protocol"
@@ -141,16 +143,37 @@ func (client *Client) Run() error {
 	const mainAction = "test-echo-server"
 	defer client.conn.Close()
 
+	// Por lo que investigue, necesito un canal que reciba la syscall ya l recibirla
+	// se ejecuta la goroutine que cierra el socket
+	sigchanel := make(chan os.Signal, 1)
+	signal.Notify(sigchanel, syscall.SIGTERM)
+	stopchannel := make(chan bool, 1) // Canal para detectar cuando devolver nil por el SIGTERM
+	go func() {
+		<-sigchanel
+		client.conn.Close()
+		stopchannel <- true
+	}()
+
 	if err := client.readInputFile(); err != nil {
-		logger.Error("read-input-file", logger.Fail)
-		return err
+		select {
+		case <-stopchannel:
+			return nil // Para que main devuelva 0 y no 1 por error
+		default:
+			logger.Error("read-input-file", logger.Fail)
+			return err
+		}
 	}
 	logger.Info(mainAction, logger.Success, "agency-id", client.config.AgencyId)
 	
 	// Luego de mandar todo recibo los ganadores
 	if err := client.recvWinners(); err != nil {
-		logger.Error("recv-winners", logger.Fail)
-		return err
+		select {
+		case <-stopchannel:
+			return nil // Para que main devuelva 0 y no 1 por error
+		default:
+			logger.Error("recv-winners", logger.Fail)
+			return err
+		}
 	}
 
 	return nil
