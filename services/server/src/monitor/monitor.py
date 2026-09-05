@@ -12,8 +12,13 @@ class Monitor:
         self.lock = threading.Lock()
         self.agencys = 0
         self.condition = threading.Condition(self.lock) # Para esperar quorum de ej 7 sin busy wait
+        self.shutting_down = False # Para romper el while
 
-    
+    def shutdown(self) -> None:
+        with self.condition:
+            self.shutting_down = True
+            self.condition.notify_all()
+
     # Se encarga de  guardar las apuestas (seccion critica)
     def store_bet(self, bets: list[Bet]) -> None:
         self.lock.acquire()
@@ -28,6 +33,8 @@ class Monitor:
         with self.condition:
             while self.agencys < AGENCY_QUORUM_MIN:
                 self.condition.wait()
+                if self.shutting_down:
+                    return [] # Para no colgarse en el wait por el sigterm
             # Cuando se cumple la condicion se hace el load. Con with no necesito hacer realese
             bets = self.lottery.load_bets()
 

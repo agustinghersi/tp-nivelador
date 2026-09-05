@@ -15,7 +15,7 @@ class Server:
         self.status = True # Espero encontrar un mejor nombre antes de la entrega final
         self.server_socket = None # Hasta crearlo en run()
 
-    def _handle_client(self, client_socket, monitor: monitor):
+    def _handle_client(self, client_socket, monitor):
         action = "handle-client"
         message_amount = 0
         chunk_amount = 0 # Para contar la cantidad de chunks recibidos
@@ -40,30 +40,12 @@ class Server:
                 chunk_amount += 1
 
                 bets = protocol.create_bet(client_messages, agency)
-                monitor.store_bet(bets) # Adentro del monitor veo temas de concurrencia
-            
-            # Sacar el codigo repetido con el ConectionError
-            monitor.register_agency()
-            winners = monitor.get_winners(agency)
-            logger.info(action, logger.LogResult.success, "winners", winners)
-            # Envio ganadores
-            protocol.send_winners(client_socket, winners)
-            client_socket.close()
-
+                monitor.store_bet(bets) # Adentro del monitor veo temas de concurrencia        
+            self.send_winners(client_socket, monitor, agency)
 
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
         except ConnectionError:
-            # YA con todos los mensages recibidos, se ve quien gano
-            monitor.register_agency()
-            winners = monitor.get_winners(agency)
-            logger.info(action, logger.LogResult.success, "winners", winners)
-
-            # Envio ganadores
-            protocol.send_winners(client_socket, winners)
-
-            logger.info(action, logger.LogResult.success, "messages-amount", message_amount)
-            logger.info(action, logger.LogResult.success, "chunks-amount", chunk_amount)
-            client_socket.close() # Ya no van a llegar mas mensajes
+            self.send_winners(client_socket, monitor, agency)
             return
         except Exception as e:
             logger.error(
@@ -71,12 +53,20 @@ class Server:
             )
             raise e
 
+    def send_winners(self, client_socket, monitor, agency):
+         # YA con todos los mensages recibidos, se ve quien gano
+        monitor.register_agency()
+        winners = monitor.get_winners(agency)
+        protocol.send_winners(client_socket, winners) # Envio ganadores
+        client_socket.close() # Ya no van a llegar mas mensajes
+
     # Metodo que cierra el socket. Se hace aca porque el server se queda en el accept() y no termina el ciclo
     # Tambien hago el cambio de status para romper el while y liberar recursos
     def handle_signal(self, signum, frame):
         logger.info("SIGTERM-received", logger.LogResult.success, "signal", signum)
-        self.server_socket.close()
         self.status = False
+        self.monitor.shutdown()
+        self.server_socket.close()
 
     def run(self):
         action = "accept-connection"
@@ -93,12 +83,16 @@ class Server:
                 try:
                     logger.info(action, logger.LogResult.in_progress)
                     client_socket, _ = server_socket.accept()
+                except OSError as e:
+                    if not self.status:
+                        break # Este es el caso de SIGTERM. Corto el while y libero
+                    raise e
                 except Exception as e:
                     logger.error(action, logger.LogResult.fail)
                     raise e
                 logger.info(action, logger.LogResult.success)
 
-                thread = threading.Thread(target=self._handle_client, args=(client_socket, self.monitor))
+                thread = threading.Thread(target = self._handle_client, args = (client_socket, self.monitor), daemon = True)
                 threads.append(thread)
                 thread.start()
                 logger.info("thread running", logger.LogResult.success, "thread-started")
