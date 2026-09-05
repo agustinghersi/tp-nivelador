@@ -15,7 +15,5 @@ def send_all(socket: socket.socket, bytes):
     BytesSent = 0
     while BytesSent < len(bytes):
         bytesSent = socket.send(bytes[BytesSent:])
-        if bytesSent == 0:
-            raise Exception("No se pudo enviar ningun byte")
         BytesSent += bytesSent
     return None
