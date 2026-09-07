@@ -1,24 +1,19 @@
 Redactar un breve informe en donde se detallen los aspectos más importantes de la solución provista, como ser el protocolo de comunicación implementado y los mecanismos para sincronizar la ejecución concurrente.
 
-Hasta ej 5 (es protocolo texto):
+Lo primero a destacar es la interacción dentro del sistema. El cliente se comunica con el servidor, pero agregue capas para desacoplar. Tanto cliente como servidor no se comunican con los sockets, arme un protocolo que funciona como capa intermedia entre ambos para permitir mayor abstracción. La idea es que cliente/server hable con el protocolo y este, de alguna forma, le devuelva un mensaje con los datos en un formato deseado.
+Ademas, en el servidor arme una clase monitor. La idea es que el monitor sea unico, y todos los threads que se generan por cada cliente lo utilicen.
 
-El protocolo consiste en una primer comunicación del cliente al servidor informando el id de la agencia correspondiente en 1 byte, para que posteriormente el server pueda mandarle al cliente solo los ganadores correspondientes a esta agencia.
-Posteriormente se entra en un loop en el cliente, donde se envia un mensaje por cada linea del archivo INPUT_FILE. Este mensaje consta de 2 partes: un "header" de 4 bytes que indica la longitud de la linea a leer a continuación, y luego el propio mensaje. El servidor sabe que debe leeer 4 bytes y en base a lo recibido leer N mas, pudiendo mediante ciclos garantizarse la llegada del mensaje completo y evitando asi short read/write.
-El server recibe las apuestas de distintos clientes y la clase lottery se encarga de filtrar a los ganadores. Es el protocolo el que, en base a los resultados de lottery, parsea las apuestas ganadoras para su posterior envio a los clientes.
-El envio de los ganadores sigue la misma idea: hay 4 bytes que indican el largo de la linea que representa una apuesta ganadora, seguido por las bbytes correspondientes a la apuesta. Esto permite al cliente poder determinar la longitud del mensaje correspondiente a una apuesta que debe persistir en OUTPUT_FILE
+El protocolo implementado esta basado en lo aprendido en la materia Taller de Programación y el protocolo TLV. La idea es enviar la longitud del mensaje (apuesta) en un tamaño fijo conocido por el protocolo (4 bytes). Se lee en el receptor el lenght, y luego puede leerse el Value de forma dinamica, pues distintos mensajes tienen distinta longitud.
+El short write/read se soluciona con esta información. Los primeros 4 bytes indiccan cuantos leer, pudiendose  realizar varios write/read en caso de no haberse obtenido todos al primer intento. Esta es responsabilidad del safe_socket, de forma que el protocolo solo le dicce cuanto leer y sabe que el mensaje obtenido tendra esa longitud.
+Con esto, el ejercicio 5 esta completado (enviar de a una apuesta). En la parte de batch se reutiliza lo hecho y se agrega un campo nuevo al comienzo del mensaje. La idea es, de nuevo, un campo fijo (4 bytes) que indica la cantidad de mensajes (apuestas) a enviar. Esto permite leer el valor N en 4 bytes, generar un ciclo de N iteraciones, y recuperar los N mensajes como se venia haciendo 1 por 1.
+Es el propio protocolo el que arma un listado de mensajes con el formato esperado para que el cliente simplemente los agregue en el OUTPUT_FILE.
+Por ultimo, al cominezar la comunicación entre cliente y servidor, debe enviarse un unico byte indicando la agencia, de forma que el servidor sepa que ganadores enviarle luego.
 
-La idea es dessacoplar en capas. Tanto cliente como servidor se comunican con el protocolo, y el protocolo es quien habla con safe_socket haciendo las validaciones propias para garantizar la correcta comunicacion. El socket realiza el envio/recepción de bytes, garantizando que no hay short write/read medainte ciclos.
+En cuanto a la concurrencia, se genera un thread por cada cliente que se conecta, y cada uno utiliza un unico monitor que gestiona el uso de lottery (recurso compartido).
+De esta forma, el servidor recibe clientes que comparten el uso del monitor, y la comunicación de cada thread se realiza utilizando el monitor y el protocolo. Internamente, el monitor se comunica con lottery y el protocolo con el socket, pudiendo asi desacoplar el sistema.
+Ademas, al comunicarse con todos los clientes, el monitor se encarga de verificar que se cumpla con el quorum minimo de agencias antes de empezar a enviar ganadores (notifica a las priemras con notifyAll).
 
-Ej: 6
+Por ultimo, para gestionar el SIGTERM es distinta la implementación del cliente que en el servidor. En el servidor se cierra el socket y se llama a shutdown del monitor. Como el monitor es 1 y lo utilizan todos los threads, el shutdown cambia un flag que permite hacer un notifyAll a cada thread, haciendo que terminen, salgan del while del run del server y, por ultimo, los threads hagan join.
+En el caso del cliente, hay un canal esperando la llegada de la SIGTERM. Esta go routine cierra el socket y permite detectar, ante un error, si se ocasiono por una SIGTERM. En este caso, el run de client termina sin error.
 
-Se agrego una "capa" superior al protocolo. Simplemente se modificaron las funciones existentes para que no se lean 2 campos linea a linea.
-El cliente enviara primero 4 bytes con la cantidad de elementos del chunk (ej: N. definido en el BATCH_SIZE), entonces se realiza un ciclo donde se leeran N lineas, y se generara un unico mensaje con los 4 bytes de tamaño del chunk y posteriormente linea a linea como se hacia antes. Esto hace que en vez de enviarse 2N + 1 mensajes se envie uno solo mucho mas grande, y aun asi el server pueda trabajar la información.
-El server lee esos primeros 4 bytes para saber cuantas apuestas le llegan, y luego en un ciclo lee las N lineas como se venia haciendo hasta el ejercicio anterior. Esto permite crear N bets por mensaje en el servidor.
-
-Ej: 7
-
-Se agrego una clase Monitor que se encarga de comunicarse con Loteria, de forma de poder tener un unico monitor para los N clientes y brindar una API para el uso de las funciones de Loteria protegiendo secciones criticas con un lock.
-Por cada cliente levanto un hilo que conoce al unico Monitor, y es este monitor quien se encarga de gestionar que solo un cliente acceda en un determinado momento al recurso protegido, e internamente valida que el minimo de agencias hayan cargado todas las apuestas antes de devolver los ganadores.
-Esto ultimo lo hago aplicando una conndition sobre el lock, despertando a los hilos dormidos cuando se cumpla (minima cantidad de agencias definida en el compose).
-
-Falta manejar los errores correctamente, cerrar FD, y ver si es necesario pasar el protocolo a binario.
+Algunas posibles mejoras no implementadas serian un mejor manejo de errores y el cierre de sockets en estos casos. Ademas, el envio de ACKs ayudaria a gestionar posibles fallas, y no depender exclusivamente del short write/read arreglado.
