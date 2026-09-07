@@ -53,13 +53,14 @@ class Server:
                 action, logger.LogResult.fail, "messages-amount", message_amount
             )
             raise e
+        finally:
+            client_socket.close() # Pase lo que pase cierro el socket al final
 
     def send_winners(self, client_socket, monitor, agency):
          # YA con todos los mensages recibidos, se ve quien gano
         monitor.register_agency()
         winners = monitor.get_winners(agency)
         protocol.send_winners(client_socket, winners) # Envio ganadores
-        client_socket.close() # Ya no van a llegar mas mensajes
 
     # Metodo que cierra el socket. Se hace aca porque el server se queda en el accept() y no termina el ciclo
     # Tambien hago el cambio de status para romper el while y liberar recursos
