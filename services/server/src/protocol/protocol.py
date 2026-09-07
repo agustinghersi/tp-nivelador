@@ -65,3 +65,9 @@ def send_winners(socket: socket.socket, winners: list[Bet]):
         message = firstMessage + message
         bytesSent = safe_socket.send_all(socket, message)
 
+# Envio ACK luego de terminar de leer el chunk del cliente
+def send_ack(socket: socket.socket):
+    ack = "ACK".encode("ascii")
+    firstMessage = f"{3:04d}".encode("ascii") # 4 bytes de longitud
+    message = firstMessage + ack
+    safe_socket.send_all(socket, message)

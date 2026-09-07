@@ -16,7 +16,7 @@ func SendAgency(socket io.Writer, agency string) error {
 // Envio un chunk de lineas al servidor
 // Manda 4 bytes indicando tamaño de chunk
 //Luego, por cada linea, manda 4 bytes de longitud de mensaje y el propio mensaje
-func SendAll(socket io.Writer, chunk []string) error {
+func SendAll(socket io.ReadWriter, chunk []string) error {
 	elements := len(chunk)
 	BytesToSend := []byte{}
 	// Agrego el numero de elementos del chunk. Por protocolo son 4 bytes
@@ -30,14 +30,18 @@ func SendAll(socket io.Writer, chunk []string) error {
 		BytesToSend = append(BytesToSend, BytesToSendMessage...)
 		BytesToSend = append(BytesToSend, message...)
 	}
-
+	
 	// Envio todo el chunk de una
 	if err := safe_socket.SendAll(socket, BytesToSend); err != nil {
 		return err
 	}
 
-	return nil
+	// Espero a recibir el ACK
+	if err := RecvACK(socket); err != nil {
+		return err
+	}
 
+	return nil
 }
 
 func RecvWinners(socket io.Reader) ([]byte, error) {
@@ -67,4 +71,24 @@ func RecvWinners(socket io.Reader) ([]byte, error) {
 	}
 
 	return message, nil
+}
+
+// Recibo un ACK del server luego de enviar un chunk
+func RecvACK(socket io.Reader) error {
+	lenght, err := safe_socket.RecvAll(socket, 4)
+	if err != nil {
+		return err
+	}
+	size, err := strconv.Atoi(string(lenght))
+	if err != nil {
+		return err
+	}
+	ack, err := safe_socket.RecvAll(socket, size)
+	if err != nil {
+		return err
+	}
+	if string(ack) != "ACK" {
+		return fmt.Errorf("ACK incorrecto")
+	}
+	return nil
 }

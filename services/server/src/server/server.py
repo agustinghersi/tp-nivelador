@@ -40,7 +40,8 @@ class Server:
                 chunk_amount += 1
 
                 bets = protocol.create_bet(client_messages, agency)
-                monitor.store_bet(bets) # Adentro del monitor veo temas de concurrencia        
+                monitor.store_bet(bets) # Adentro del monitor veo temas de concurrencia   
+                protocol.send_ack(client_socket) # Mando ACK avisando que termine de leer el chunk
             self.send_winners(client_socket, monitor, agency)
 
         # Caso de conexion cerrada por ya haber enviado todos los mensajes
