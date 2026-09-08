@@ -5,14 +5,14 @@ from lottery.bet import Bet
 # Aca defino la primer comunicación del protocolo
 # Se recibe una sola vez la agencia del cliente con el que se comunica
 def recv_agency(socket: socket.socket):
-    return safe_socket.recv_all(socket, 1).decode('ascii')
+    return safe_socket.recv_all(socket, 1).decode('utf-8')
 
 # Recibo en 4 bytes la cantidad de lineas en el chunk
 # Luego recibo el largo de la linea en 4 bytes y luego recibo el mensaje
 # Esto ultimo se repite len(chunk) veces
 def recv_all(socket: socket.socket):
     # Primero determino la cantidad de mensaje s a leer
-    ChunkSize = int(safe_socket.recv_all(socket, 4).decode('ascii'))
+    ChunkSize = int(safe_socket.recv_all(socket, 4).decode('utf-8'))
     messages = []
     # Ahora armo el ciclo de recuperar longituf y mensaje
     for i in range(ChunkSize):
@@ -21,7 +21,7 @@ def recv_all(socket: socket.socket):
             raise ConnectionError("No se recibio ningun byte") # Ya se recibio la ultima linea
 
         # Ahora recibo la apuesta sabiendo longitud
-        sizeMessage = int(BytesToRecv.decode('ascii'))
+        sizeMessage = int(BytesToRecv.decode('utf-8'))
         bytesRecv = safe_socket.recv_all(socket, sizeMessage)
         if not bytesRecv:
             raise Exception("No se recibio ningun byte") # Aca no deberia llegar
@@ -59,7 +59,7 @@ def send_winners(socket: socket.socket, winners: list[Bet]):
         ])
         message = message.encode("utf-8")
         messageSize = len(message)
-        firstMessage = f"{messageSize:04d}".encode("ascii") # 4 bytes que indican longitud
+        firstMessage = f"{messageSize:04d}".encode("utf-8") # 4 bytes que indican longitud
         
         # Armo el mensaje completo, con longitud y apuesta, y lo envio
         message = firstMessage + message
@@ -67,7 +67,7 @@ def send_winners(socket: socket.socket, winners: list[Bet]):
 
 # Envio ACK luego de terminar de leer el chunk del cliente
 def send_ack(socket: socket.socket):
-    ack = "ACK".encode("ascii")
-    firstMessage = f"{3:04d}".encode("ascii") # 4 bytes de longitud
+    ack = "ACK".encode("utf-8")
+    firstMessage = f"{3:04d}".encode("utf-8") # 4 bytes de longitud
     message = firstMessage + ack
     safe_socket.send_all(socket, message)

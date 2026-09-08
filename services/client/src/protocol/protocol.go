@@ -36,7 +36,7 @@ func SendAll(socket io.ReadWriter, chunk []string) error {
 		return err
 	}
 
-	// Espero a recibir el ACK
+	// Espero a recibir el ACK antes de mandar otro chunk/batch
 	if err := RecvACK(socket); err != nil {
 		return err
 	}
@@ -75,11 +75,12 @@ func RecvWinners(socket io.Reader) ([]byte, error) {
 
 // Recibo un ACK del server luego de enviar un chunk
 func RecvACK(socket io.Reader) error {
+	// Primero longitud como siempre (aunque es fija en este caso)
 	lenght, err := safe_socket.RecvAll(socket, 4)
 	if err != nil {
 		return err
 	}
-	size, err := strconv.Atoi(string(lenght))
+	size, err := strconv.Atoi(string(lenght)) // Es siempre 3 pero para mantener el formato
 	if err != nil {
 		return err
 	}

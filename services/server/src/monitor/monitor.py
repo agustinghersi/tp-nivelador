@@ -14,6 +14,7 @@ class Monitor:
         self.condition = threading.Condition(self.lock) # Para esperar quorum de ej 7 sin busy wait
         self.shutting_down = False # Para romper el while
 
+    # Se encarga de avisar a cada hilo que debe terminar (se usa ante SIGTERM)
     def shutdown(self) -> None:
         with self.condition:
             self.shutting_down = True

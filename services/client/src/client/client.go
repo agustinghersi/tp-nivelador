@@ -111,7 +111,7 @@ func (client *Client) readInputFile() error {
 }
 
 func (client *Client) recvWinners() error {
-	// Creo o trunco el output
+	// Creo el output
 	outPutFile, err := os.Create(client.config.OutputFile)
 	if err != nil {
 		logger.Error("open-output-file", logger.Fail, "output-file", client.config.OutputFile)
@@ -143,7 +143,7 @@ func (client *Client) Run() error {
 	const mainAction = "test-echo-server"
 	defer client.conn.Close()
 
-	// Por lo que investigue, necesito un canal que reciba la syscall ya l recibirla
+	// Por lo que investigue, necesito un canal que reciba la syscall y al recibirla
 	// se ejecuta la goroutine que cierra el socket
 	sigchanel := make(chan os.Signal, 1)
 	signal.Notify(sigchanel, syscall.SIGTERM)

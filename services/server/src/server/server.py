@@ -98,6 +98,6 @@ class Server:
                 threads.append(thread)
                 thread.start()
                 logger.info("thread running", logger.LogResult.success, "thread-started")
-        # YA habiendo salido del while por el SIGTERM, libero recursos
+        # YA habiendo salido del while, joineo threads
         for thread in threads:
             thread.join()
